@@ -13,6 +13,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
+import io
 
 import warnings, itertools
 warnings.filterwarnings("ignore")
