@@ -4,6 +4,11 @@ Run:  streamlit run lmk_dashboard.py
 """
 
 import streamlit as st
+from pathlib import Path
+
+# Resolve CSV paths relative to this script
+# Works locally AND on Streamlit Cloud regardless of working directory
+_HERE = Path(__file__).parent
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -104,17 +109,6 @@ html[data-theme="dark"] .interp-box,
     color:#c8e4f8 !important;
 }
 
-/* -- Word analysis chart card: white box with shadow ---------- */
-/* Wraps Plotly charts that have white paper_bgcolor so they    */
-/* look intentional (not broken) when viewed in dark mode       */
-.wa-chart-card {
-    background:#FFFFFF;
-    border-radius:10px;
-    padding:6px 6px 2px 6px;
-    margin:6px 0 10px 0;
-    box-shadow:0 2px 10px rgba(0,0,0,0.15);
-}
-
 /* -- Responsive layout ---------------------------------------- */
 @media (max-width:768px) {
     .block-container { padding-left:0.5rem !important; padding-right:0.5rem !important; }
@@ -152,8 +146,8 @@ RATING_COLORS   = [GREEN, "#A8D5C2", "#F5D78E", ORANGE, RED]
 @st.cache_data
 def load_data():
     # -- UPDATE THESE PATHS to point at your CSVs --------------
-    df_s = pd.read_csv("Sessions 23-24 and 24-25.csv")
-    df_v = pd.read_csv("Impact surveys 23-24 and 24-25.csv")
+    df_s = pd.read_csv(_HERE / "Sessions 23-24 and 24-25.csv")
+    df_v = pd.read_csv(_HERE / "Impact surveys 23-24 and 24-25.csv")
 
     df_s.columns = df_s.columns.str.strip()
     df_v.columns = df_v.columns.str.strip()
@@ -738,8 +732,8 @@ def render_pattern_analysis_tab():
     # -- Load data ------------------------------------------------------------------
     @st.cache_data
     def load_data():
-        df_s = pd.read_csv("Sessions 23-24 and 24-25.csv")
-        df_v = pd.read_csv("Impact surveys 23-24 and 24-25.csv")
+        df_s = pd.read_csv(_HERE / "Sessions 23-24 and 24-25.csv")
+        df_v = pd.read_csv(_HERE / "Impact surveys 23-24 and 24-25.csv")
         df_s.columns = df_s.columns.str.strip()
         df_v.columns = df_v.columns.str.strip()
 
@@ -851,7 +845,7 @@ def render_pattern_analysis_tab():
     # -- Feature matrix builder -----------------------------------------------------
     @st.cache_data
     def build_feature_matrix(df_json):
-        df = pd.read_json(df_json)
+        df = pd.read_json(io.StringIO(df_json))
         encoders = {}
         X = pd.DataFrame(index=df.index)
 
@@ -917,7 +911,7 @@ def render_pattern_analysis_tab():
     # -- SHAP for one question ------------------------------------------------------
     @st.cache_data
     def compute_shap(df_json, q_col, n_est):
-        df = pd.read_json(df_json)
+        df = pd.read_json(io.StringIO(df_json))
         X_loc, _ = build_feature_matrix(df.to_json())
 
         # Build target
@@ -1268,7 +1262,7 @@ def render_pattern_analysis_tab():
     # -- Compute all pairwise Cramer's V -------------------------------------------
     @st.cache_data
     def compute_all_pairs(df_json, feats):
-        df = pd.read_json(df_json)
+        df = pd.read_json(io.StringIO(df_json))
         results = []
         for f1, f2 in itertools.combinations(feats, 2):
             if f1 not in df.columns or f2 not in df.columns:
@@ -2739,31 +2733,16 @@ def render_word_analysis_tab():
         )
         fig.update_layout(
             plot_bgcolor="#FFFFFF",
-            paper_bgcolor="#FFFFFF",      # solid white — axis labels always readable
-            font=dict(color="#222222", size=11),
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#333333", size=11),
             height=max(300, 26*n+80),
             margin=dict(t=48, b=30, l=10, r=20),
             coloraxis_showscale=False,
             yaxis=dict(autorange="reversed",
-                       tickfont=dict(color="#222222", size=10),
-                       title_font=dict(color="#222222")),
-            xaxis=dict(tickfont=dict(color="#222222", size=10),
-                       title_font=dict(color="#222222")),
-            title_font=dict(color="#222222"),
+                       tickfont=dict(color="#333333", size=10)),
+            xaxis=dict(tickfont=dict(color="#333333", size=10)),
         )
         return fig
-
-    def wa_chart(fig, key):
-        """Display a word-analysis chart inside a white card div.
-        The card makes the white chart background look intentional
-        in Streamlit's dark theme rather than a broken rectangle."""
-        st.markdown(
-            '<div style="background:#fff;border-radius:10px;padding:4px 4px 0 4px;'
-            'box-shadow:0 2px 10px rgba(0,0,0,0.18);margin:4px 0 12px 0;">',
-            unsafe_allow_html=True,
-        )
-        st.plotly_chart(fig, use_container_width=True, key=key)
-        st.markdown("</div>", unsafe_allow_html=True)
 
     def make_wordcloud(texts):
         """Return base64 PNG of word cloud."""
@@ -2823,22 +2802,20 @@ def render_word_analysis_tab():
             marker_color=[GREEN, "#F5D78E", RED],
             text=[f"{v} ({v/total*100:.0f}%)" for v in [pos, neu, neg]],
             textposition="outside",
-            textfont=dict(color="#222222", size=11),
+            textfont=dict(color="#333333", size=11),
             cliponaxis=False,
         ))
         fig.update_layout(
             title=dict(text=title, y=0.97, x=0, xanchor="left",
-                       font=dict(size=13, color="#222222")),
+                       font=dict(size=13)),
             plot_bgcolor="#FFFFFF",
-            paper_bgcolor="#FFFFFF",      # solid white — axis labels always readable
-            font=dict(color="#222222", size=11),
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#333333", size=11),
             height=300,
             margin=dict(t=44, b=40, l=10, r=10),
             yaxis=dict(title="Responses",
-                       tickfont=dict(color="#222222", size=10),
-                       title_font=dict(color="#222222")),
-            xaxis=dict(tickfont=dict(color="#222222", size=10),
-                       title_font=dict(color="#222222")),
+                       tickfont=dict(color="#333333", size=10)),
+            xaxis=dict(tickfont=dict(color="#333333", size=10)),
             showlegend=False,
         )
         return fig
@@ -3008,34 +2985,53 @@ def render_word_analysis_tab():
                     )
 
             with r1c2:
-                wa_chart(sentiment_bar(texts_all, "Sentiment of Free-Text Responses"), key=f"wa_sentiment_{q_col}")
+                st.plotly_chart(
+                    sentiment_bar(texts_all,
+                                  "Sentiment of Free-Text Responses"),
+                    use_container_width=True,
+                    key=f"wa_sentiment_{q_col}",
+                )
 
             # ── Row 2: Top words bar ───────────────────────────
             st.markdown("---")
             words_all = tokenise(texts_all)
             word_freq  = Counter(words_all)
 
-            wa_chart(freq_bar(word_freq, n_top,
-                              f"Top {n_top} Words - All Responses",
-                              ACCENT), key=f"wa_topwords_{q_col}")
+            st.plotly_chart(
+                freq_bar(word_freq, n_top,
+                         f"Top {n_top} Words — All Responses",
+                         ACCENT),
+                use_container_width=True,
+                key=f"wa_topwords_{q_col}",
+            )
 
             # ── Row 3: Top words split pos vs neg ─────────────
             col_pw, col_nw = st.columns(2)
             with col_pw:
                 if texts_pos:
                     words_pos = tokenise(texts_pos)
-                    wa_chart(freq_bar(Counter(words_pos), min(n_top, 10),
-                                     f"Top Words - Positive (n={n_pos:,})",
-                                     GREEN), key=f"wa_pos_words_{q_col}")
+                    st.plotly_chart(
+                        freq_bar(Counter(words_pos),
+                                 min(n_top, 10),
+                                 f"Top Words — Positive Responders (n={n_pos:,})",
+                                 GREEN),
+                        use_container_width=True,
+                        key=f"wa_pos_words_{q_col}",
+                    )
                 else:
                     st.info("No text from positive responders.")
 
             with col_nw:
                 if texts_neg:
                     words_neg = tokenise(texts_neg)
-                    wa_chart(freq_bar(Counter(words_neg), min(n_top, 10),
-                                     f"Top Words - Non-Positive (n={n_neg:,})",
-                                     RED), key=f"wa_neg_words_{q_col}")
+                    st.plotly_chart(
+                        freq_bar(Counter(words_neg),
+                                 min(n_top, 10),
+                                 f"Top Words — Non-Positive Responders (n={n_neg:,})",
+                                 RED),
+                        use_container_width=True,
+                        key=f"wa_neg_words_{q_col}",
+                    )
                 else:
                     st.info("No text from non-positive responders.")
 
@@ -3047,9 +3043,14 @@ def render_word_analysis_tab():
 
             col_b1, col_b2 = st.columns(2)
             with col_b1:
-                wa_chart(freq_bar(bg_freq, min(n_top, 12),
-                                 "Top Bigrams - All Responses",
-                                 PURPLE), key=f"wa_bigrams_{q_col}")
+                st.plotly_chart(
+                    freq_bar(bg_freq,
+                             min(n_top, 12),
+                             "Top Bigrams — All Responses",
+                             PURPLE),
+                    use_container_width=True,
+                    key=f"wa_bigrams_{q_col}",
+                )
 
             with col_b2:
                 # Unique words to positive vs negative (differential vocabulary)
@@ -3062,7 +3063,14 @@ def render_word_analysis_tab():
                         for w in w_pos_set
                         if w_pos_set[w] - w_neg_set.get(w, 0) > 0
                     })
-                    wa_chart(freq_bar(diff_pos, min(n_top,12), f"Words more common among {cfg['label']} positive responders", GREEN), key=f"wa_diffvocab_{q_col}")
+                    st.plotly_chart(
+                        freq_bar(diff_pos,
+                                 min(n_top, 12),
+                                 f"Words more common among {cfg['label']} positive responders",
+                                 GREEN),
+                        use_container_width=True,
+                        key=f"wa_diffvocab_{q_col}",
+                    )
                 else:
                     st.info("Need both positive and non-positive responders "
                             "to show differential vocabulary.")
