@@ -1302,7 +1302,11 @@ def render_pattern_analysis_tab():
         for _, row in pair_df.iterrows():
             mat.loc[row["Feature A"], row["Feature B"]] = row["Cramer's V"]
             mat.loc[row["Feature B"], row["Feature A"]] = row["Cramer's V"]
-        np.fill_diagonal(mat.values, 1.0)
+        #np.fill_diagonal(mat.values, 1.0)
+        mat_arr = mat.to_numpy(copy=True).astype(float)
+        np.fill_diagonal(mat_arr, 1.0)
+        mat = pd.DataFrame(mat_arr, index=mat.index, columns=mat.columns)
+
 
         fig_heat = px.imshow(
             mat, text_auto=".2f",
