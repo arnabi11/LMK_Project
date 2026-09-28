@@ -267,7 +267,8 @@ if sel_borough: df = df[df["borough"].isin(sel_borough)]
 # -- Feature matrix builder -----------------------------------------------------
 @st.cache_data
 def build_feature_matrix(df_json):
-    df = pd.read_json(df_json)
+    #df = pd.read_json(df_json)
+    df = pd.read_json(io.StringIO(df_json))
     encoders = {}
     X = pd.DataFrame(index=df.index)
 
@@ -333,7 +334,8 @@ def pct_positive_crosstab(df, col_a, col_b, q_col, pos_set):
 # -- SHAP for one question ------------------------------------------------------
 @st.cache_data
 def compute_shap(df_json, q_col, n_est):
-    df = pd.read_json(df_json)
+    #df = pd.read_json(df_json)
+    df = pd.read_json(io.StringIO(df_json))
     X_loc, _ = build_feature_matrix(df.to_json())
 
     # Build target
@@ -684,7 +686,8 @@ else:
 # -- Compute all pairwise Cramer's V -------------------------------------------
 @st.cache_data
 def compute_all_pairs(df_json, feats):
-    df = pd.read_json(df_json)
+    #df = pd.read_json(df_json)
+    df = pd.read_json(io.StringIO(df_json))
     results = []
     for f1, f2 in itertools.combinations(feats, 2):
         if f1 not in df.columns or f2 not in df.columns:
