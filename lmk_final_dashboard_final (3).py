@@ -1207,7 +1207,8 @@ def render_pattern_analysis_tab():
                         showlegend=False,
                     )
                     st.plotly_chart(fig_dep, use_container_width=True)
-                    _dep_corr = float(np.corrcoef(dep_df[feat].to_numpy(), dep_df["SHAP"].to_numpy())[0,1])
+                    #_dep_corr = float(np.corrcoef(dep_df[feat].to_numpy(), dep_df["SHAP"].to_numpy())[0,1])
+                    _dep_corr = float(np.corrcoef(dep_df[feat].values, dep_df["SHAP"].values)[0,1])
                     _dep_dir  = "positive" if _dep_corr > 0.05 else ("negative" if _dep_corr < -0.05 else "flat")
                     _dep_word = ("as values increase, positive response becomes more likely"
                                  if _dep_corr > 0.05 else
@@ -1302,9 +1303,12 @@ def render_pattern_analysis_tab():
         for _, row in pair_df.iterrows():
             mat.loc[row["Feature A"], row["Feature B"]] = row["Cramer's V"]
             mat.loc[row["Feature B"], row["Feature A"]] = row["Cramer's V"]
-        mat_arr = mat.to_numpy(copy=True).astype(float)
-        np.fill_diagonal(mat_arr, 1.0)
-        mat = pd.DataFrame(mat_arr, index=mat.index, columns=mat.columns)
+        #mat_arr = mat.to_numpy(copy=True).astype(float)
+        #np.fill_diagonal(mat_arr, 1.0)
+        #mat = pd.DataFrame(mat_arr, index=mat.index, columns=mat.columns)
+        _mat_arr = mat.to_numpy(dtype=float, copy=True)
+        np.fill_diagonal(_mat_arr, 1.0)
+        mat = type(mat)(_mat_arr, index=mat.index, columns=mat.columns)
 
         fig_heat = px.imshow(
             mat, text_auto=".2f",
@@ -1357,15 +1361,21 @@ def render_pattern_analysis_tab():
             if val == "Moderate": return "background-color:#FFF3CD; color:#856404"
             return "background-color:#F8D7DA; color:#721c24"
 
-        def _style_cramer_row(row):
-            if row["Strength"] == "Strong":
-                return ["background-color:#D4EDDA;color:#155724"] * len(row)
-            if row["Strength"] == "Moderate":
-                return ["background-color:#FFF3CD;color:#856404"] * len(row)
-            return ["background-color:#F8D7DA;color:#721c24"] * len(row)
+        #def _style_cramer_row(row):
+            #if row["Strength"] == "Strong":
+                #return ["background-color:#D4EDDA;color:#155724"] * len(row)
+            #if row["Strength"] == "Moderate":
+                #return ["background-color:#FFF3CD;color:#856404"] * len(row)
+            #return ["background-color:#F8D7DA;color:#721c24"] * len(row)
 
         st.dataframe(
-            disp_df.style.apply(_style_cramer_row, axis=1),
+            disp_df.style.apply(
+                lambda row: [
+                    "background:#D4EDDA;color:#155724" if row["Strength"]=="Strong"
+                    else "background:#FFF3CD;color:#856404" if row["Strength"]=="Moderate"
+                    else "background:#F8D7DA;color:#721c24"
+                    for _ in row
+                ], axis=1),
             use_container_width=True, height=380,
         )
 
@@ -1514,7 +1524,9 @@ def render_pattern_analysis_tab():
     # Identify top pairs by Cramer's V (limit to top 8 most interesting pairs)
     TOP_N_PAIRS = 8
     if not pair_df.empty:
-        top_pairs = pair_df.head(TOP_N_PAIRS)[["feat_a","feat_b"]].to_numpy().tolist()
+        #top_pairs = pair_df.head(TOP_N_PAIRS)[["feat_a","feat_b"]].to_numpy().tolist()
+        top_pairs = pair_df.head(TOP_N_PAIRS)[["feat_a","feat_b"]].values.tolist()
+
     else:
         # Fallback: manual key pairs
         top_pairs = [
@@ -1641,12 +1653,14 @@ def render_pattern_analysis_tab():
                 try:
                     shap_int = explainer_int.shap_interaction_values(X_sample)
                 except Exception as _sie:
-                    raise RuntimeError(
-                        f"SHAP interaction values unavailable: {_sie}"
-                    ) from _sie
+                    #raise RuntimeError(
+                        #f"SHAP interaction values unavailable: {_sie}" 
+                    #) from _sie
+                    raise RuntimeError(f'SHAP interactions unavailable: {_sie}') from _sie
+
 
                 # Mean absolute interaction per pair
-                mean_int = np.abs(shap_int).mean(axis=0).copy()
+                mean_int = np.abs(shap_int).mean(axis=0)
                 np.fill_diagonal(mean_int, 0)  # zero out self-interaction
 
                 int_df = pd.DataFrame(mean_int,
@@ -2008,14 +2022,20 @@ def render_pattern_analysis_tab():
         st.markdown(f"**Model accuracy on training data: {dt_acc*100:.1f}%** | "
                 f"**{len(rules_df)} leaf rules extracted**")
 
-        def _style_rules_row(row):
-            if row["Prediction"] == "POSITIVE":
-                return ["background-color:#D4EDDA;color:#155724"] * len(row)
-            return ["background-color:#F8D7DA;color:#721c24"] * len(row)
+        #def _style_rules_row(row):
+            #if row["Prediction"] == "POSITIVE":
+                #return ["background-color:#D4EDDA;color:#155724"] * len(row)
+            #return ["background-color:#F8D7DA;color:#721c24"] * len(row)
 
         st.dataframe(
-            rules_df.style.apply(_style_rules_row, axis=1),
-            use_container_width=True, height=420,
+            rules_df.style.apply(
+                lambda row: [
+                    "background:#D4EDDA;color:#155724" if row["Prediction"]=="POSITIVE"
+                    else "background:#F8D7DA;color:#721c24"
+                    for _ in row
+                ], axis=1),
+        use_container_width=True, height=420,
+
         )
 
         # Top positive and negative rules as insight boxes
@@ -2578,16 +2598,23 @@ def render_pattern_analysis_tab():
             if val == "Low":  return "background-color:#F8D7DA; color:#721c24; font-weight:600"
             return "background-color:#FFF3CD; color:#856404"
 
-        def _style_summary_row(row):
-            if row["Pattern"] == "High":
-                return ["background-color:#D4EDDA;color:#155724;font-weight:600"] * len(row)
-            if row["Pattern"] == "Low":
-                return ["background-color:#F8D7DA;color:#721c24;font-weight:600"] * len(row)
-            return ["background-color:#FFF3CD;color:#856404"] * len(row)
+        #def _style_summary_row(row):
+            #if row["Pattern"] == "High":
+                #return ["background-color:#D4EDDA;color:#155724;font-weight:600"] * len(row)
+            #if row["Pattern"] == "Low":
+                #return ["background-color:#F8D7DA;color:#721c24;font-weight:600"] * len(row)
+            #return ["background-color:#FFF3CD;color:#856404"] * len(row)
 
         st.dataframe(
             summary5.style
-                .apply(_style_summary_row, axis=1)
+                .apply(
+                    lambda row: [
+                        "background:#D4EDDA;color:#155724;font-weight:600" if row["Pattern"]=="High"
+                        else "background:#F8D7DA;color:#721c24;font-weight:600" if row["Pattern"]=="Low"
+                        else "background:#FFF3CD;color:#856404"
+                        for _ in row
+                    ], axis=1)
+
                 .format({"% Positive": "{:.1f}%"}),
             use_container_width=True,
             height=460,
